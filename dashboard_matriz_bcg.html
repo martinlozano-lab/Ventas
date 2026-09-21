@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Matriz BCG & Top Ventas</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para gráficos interactivos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .quadrant-star { background-color: rgba(234, 179, 8, 0.1); border-color: rgb(234, 179, 8); }
+        .quadrant-cash { background-color: rgba(34, 197, 94, 0.1); border-color: rgb(34, 197, 94); }
+        .quadrant-question { background-color: rgba(59, 130, 246, 0.1); border-color: rgb(59, 130, 246); }
+        .quadrant-dog { background-color: rgba(239, 68, 68, 0.1); border-color: rgb(239, 68, 68); }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i class="fa-solid fa-chart-pie text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Dashboard BCG & Top Ventas</h1>
+                    <p class="text-xs text-slate-400">Sistema de Análisis Estratégico e Ingeniería Comercial</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <label class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition flex items-center gap-2">
+                    <i class="fa-solid fa-file-arrow-up"></i> Cargar CSV/Datos
+                    <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+                </label>
+                <button onclick="loadSampleData()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                    <i class="fa-solid fa-database"></i> Datos de Muestra
+                </button>
+                <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Nuevo Registro
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 card-shadow">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Productos / Ítems</p>
+                <h3 class="text-2xl font-bold mt-1 text-white" id="kpiTotalProducts">0</h3>
+                <span class="text-xs text-blue-400 mt-1 block"><i class="fa-solid fa-boxes-stacked"></i> Registrados en matriz</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 card-shadow">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Ventas Totales (Ingresos)</p>
+                <h3 class="text-2xl font-bold mt-1 text-emerald-400" id="kpiTotalRevenue">$0.00</h3>
+                <span class="text-xs text-emerald-500 mt-1 block"><i class="fa-solid fa-arrow-trend-up"></i> Facturación global</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 card-shadow">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Producto Estrella (Líder)</p>
+                <h3 class="text-lg font-bold mt-1 text-amber-400 truncate" id="kpiTopStar">Ninguno</h3>
+                <span class="text-xs text-amber-500 mt-1 block"><i class="fa-solid fa-star"></i> Mayor crecimiento y cuota</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 card-shadow">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Volumen Más Vendido</p>
+                <h3 class="text-lg font-bold mt-1 text-indigo-400 truncate" id="kpiTopVolume">Ninguno</h3>
+                <span class="text-xs text-indigo-400 mt-1 block"><i class="fa-solid fa-fire"></i> Top en unidades</span>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE MÁS VENDIDOS (TOP BEST SELLERS) -->
+        <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 card-shadow space-y-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-trophy text-amber-400"></i> Podio de Más Vendidos (Top Best Sellers)
+                    </h2>
+                    <p class="text-xs text-slate-400">Productos con mayor volumen y facturación comercial analizados</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="topSortFilter" onchange="renderTopSellers()" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-500">
+                        <option value="revenue">Ordenar por Mayor Ingreso ($)</option>
+                        <option value="units">Ordenar por Mayor Volumen (Unidades)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Gráfico y Tarjetas del Top Ventas -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                <div class="lg:col-span-1 space-y-3" id="topPodiumCards">
+                    <!-- Se inyecta dinámicamente el podio -->
+                </div>
+                <div class="lg:col-span-2 bg-slate-900/50 p-4 rounded-xl border border-slate-700/60 h-72 relative">
+                    <canvas id="topSellersChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- BCG Matrix & Visualization Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Gráfico Matriz BCG -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 card-shadow flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chess-board text-blue-400"></i> Matriz BCG (Dispersión)
+                    </h2>
+                    <span class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Eje X: Cuota Relativa | Eje Y: Crecimiento</span>
+                </div>
+                <div class="relative w-full h-80 bg-slate-900/40 rounded-xl p-2 border border-slate-700/60">
+                    <canvas id="bcgScatterChart"></canvas>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-center text-xs">
+                    <div class="bg-amber-500/10 border border-amber-500/30 text-amber-300 py-1.5 px-2 rounded-lg font-medium">⭐ Estrellas</div>
+                    <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 py-1.5 px-2 rounded-lg font-medium">🐄 Vacas Lecheras</div>
+                    <div class="bg-blue-500/10 border border-blue-500/30 text-blue-300 py-1.5 px-2 rounded-lg font-medium">❓ Interrogantes</div>
+                    <div class="bg-red-500/10 border border-red-500/30 text-red-300 py-1.5 px-2 rounded-lg font-medium">🐕 Perros</div>
+                </div>
+            </div>
+
+            <!-- Gráfico Distribución por Cuadrante -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 card-shadow flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-400"></i> Participación de Ingresos por Cuadrante
+                    </h2>
+                    <span class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Ingresos Totales ($)</span>
+                </div>
+                <div class="relative w-full h-80 bg-slate-900/40 rounded-xl p-2 border border-slate-700/60 flex items-center justify-center">
+                    <canvas id="bcgPieChart"></canvas>
+                </div>
+                <div class="mt-4 flex items-center justify-between text-xs text-slate-400">
+                    <span>* Configura los umbrales abajo para ajustar los cuadrantes.</span>
+                    <button onclick="resetThresholds()" class="text-blue-400 hover:underline">Restaurar Umbrales</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & Thresholds Config -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 card-shadow grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Umbral Cuota de Mercado Relativa (Eje X): <span id="valThresholdX" class="text-blue-400 font-bold">1.0</span></label>
+                <input type="range" id="thresholdX" min="0.1" max="5.0" step="0.1" value="1.0" oninput="updateThresholds()" class="w-full accent-blue-600 bg-slate-700 rounded-lg h-2 cursor-pointer">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Umbral Tasa de Crecimiento % (Eje Y): <span id="valThresholdY" class="text-blue-400 font-bold">10.0</span>%</label>
+                <input type="range" id="thresholdY" min="0" max="50" step="1" value="10" oninput="updateThresholds()" class="w-full accent-blue-600 bg-slate-700 rounded-lg h-2 cursor-pointer">
+            </div>
+            <div class="flex justify-end items-center gap-3">
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 block">Filtro de Cuadrante</span>
+                    <select id="quadrantFilter" onchange="renderTable()" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 mt-1 outline-none focus:border-blue-500">
+                        <option value="ALL">Todos los cuadrantes</option>
+                        <option value="Estrella">⭐ Estrellas</option>
+                        <option value="Vaca Lechera">🐄 Vacas Lecheras</option>
+                        <option value="Interrogante">❓ Interrogantes</option>
+                        <option value="Perro">🐕 Perros</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl card-shadow overflow-hidden">
+            <div class="p-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-bold text-white">Inventario Categorizado en Matriz BCG</h3>
+                    <span id="tableCountBadge" class="bg-blue-600/20 text-blue-400 text-xs font-semibold px-2.5 py-0.5 rounded-full">0 ítems</span>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <div class="relative w-full sm:w-64">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-search text-xs"></i>
+                        </span>
+                        <input type="text" id="tableSearch" oninput="renderTable()" placeholder="Buscar producto..." class="bg-slate-900 border border-slate-700 text-xs rounded-lg pl-9 pr-4 py-2 w-full text-slate-200 outline-none focus:border-blue-500">
+                    </div>
+                    <button onclick="exportCSV()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shrink-0">
+                        <i class="fa-solid fa-download"></i> Exportar
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-900/60 text-slate-400 uppercase tracking-wider border-b border-slate-700">
+                            <th class="py-3 px-4">Producto / Ítem</th>
+                            <th class="py-3 px-4">Categoría / CSV Fuente</th>
+                            <th class="py-3 px-4">Ingresos ($)</th>
+                            <th class="py-3 px-4">Unidades (Volumen)</th>
+                            <th class="py-3 px-4">Cuota Relativa (X)</th>
+                            <th class="py-3 px-4">Crecimiento % (Y)</th>
+                            <th class="py-3 px-4">Clasificación BCG</th>
+                            <th class="py-3 px-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-700/50">
+                        <!-- Inyectado por JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal para Agregar / Editar Producto -->
+    <div id="productModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md card-shadow overflow-hidden animate-in">
+            <div class="bg-slate-900 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-base font-bold text-white">Nuevo Registro de Producto</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="productForm" onsubmit="saveProduct(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editIndex" value="-1">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Nombre del Producto / Ítem</label>
+                    <input type="text" id="formName" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" placeholder="Ej. Laptop Gaming Nitro V">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Categoría / Línea</label>
+                    <input type="text" id="formCategory" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" placeholder="Ej. Electrónica / Automotriz">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Ingresos Totales ($)</label>
+                        <input type="number" id="formRevenue" step="any" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" placeholder="15000">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Unidades Vendidas</label>
+                        <input type="number" id="formUnits" step="any" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" placeholder="350">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Cuota Relativa (X)</label>
+                        <input type="number" id="formMarketShare" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" placeholder="1.5">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Crecimiento % (Y)</label>
+                        <input type="number" id="formGrowth" step="0.1" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" placeholder="12.5">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                    <button type="button" onclick="closeModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs font-medium transition">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script de lógica e interactividad -->
+    <script>
+        // Datos iniciales de ejemplo basados en el contexto industrial e inventarios
+        let productData = [
+            { name: "Acer Nitro V 16 AI", category: "All Electronics.csv", revenue: 45000, units: 120, marketShare: 2.4, growth: 22.0 },
+            { name: "Ford F-150 Auto Parts", category: "All Car and Motorbike Products.csv", revenue: 28000, units: 450, marketShare: 1.8, growth: 14.5 },
+            { name: "Kenworth T800 Air Valve", category: "All Car and Motorbike Products.csv", revenue: 19500, units: 620, marketShare: 0.6, growth: 18.0 },
+            { name: "Swatch Irony AG 2001", category: "All Electronics.csv", revenue: 8400, units: 310, marketShare: 0.4, growth: 4.2 },
+            { name: "Chocolate Tablet Kit Industrial", category: "All Grocery and Gourmet Foods.csv", revenue: 34000, units: 2400, marketShare: 1.9, growth: 5.5 },
+            { name: "Autodesk Fusion 360 License", category: "All Electronics.csv", revenue: 12000, units: 85, marketShare: 0.5, growth: 8.0 },
+            { name: "Mazda BT-50 Diesel Kit", category: "All Car and Motorbike Products.csv", revenue: 14200, units: 290, marketShare: 0.3, growth: -2.1 },
+            { name: "Calculadora Científica Básica", category: "All Books.csv", revenue: 6500, units: 890, marketShare: 0.2, growth: -5.0 }
+        ];
+
+        let scatterChart = null;
+        let pieChart = null;
+        let topChart = null;
+
+        // Inicialización al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateDashboard();
+        });
+
+        function getThresholds() {
+            return {
+                x: parseFloat(document.getElementById('thresholdX').value),
+                y: parseFloat(document.getElementById('thresholdY').value)
+            };
+        }
+
+        function updateThresholds() {
+            document.getElementById('valThresholdX').innerText = document.getElementById('thresholdX').value;
+            document.getElementById('valThresholdY').innerText = document.getElementById('thresholdY').value;
+            updateDashboard();
+        }
+
+        function resetThresholds() {
+            document.getElementById('thresholdX').value = 1.0;
+            document.getElementById('thresholdY').value = 10;
+            updateThresholds();
+        }
+
+        function classifyBCG(item, t) {
+            if (item.marketShare >= t.x && item.growth >= t.y) return "Estrella";
+            if (item.marketShare >= t.x && item.growth < t.y) return "Vaca Lechera";
+            if (item.marketShare < t.x && item.growth >= t.y) return "Interrogante";
+            return "Perro";
+        }
+
+        function updateDashboard() {
+            const t = getThresholds();
+            
+            // Asignar clasificación a cada producto
+            productData.forEach(p => p.quadrant = classifyBCG(p, t));
+
+            // Calcular KPIs
+            const totalProducts = productData.length;
+            const totalRevenue = productData.reduce((acc, curr) => acc + curr.revenue, 0);
+            
+            document.getElementById('kpiTotalProducts').innerText = totalProducts;
+            document.getElementById('kpiTotalRevenue').innerText = '$' + totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            // Encontrar Estrella líder y Top Volumen
+            const stars = productData.filter(p => p.quadrant === "Estrella");
+            const topStar = stars.length > 0 ? stars.reduce((max, p) => p.revenue > max.revenue ? p : max, stars[0]) : null;
+            document.getElementById('kpiTopStar').innerText = topStar ? topStar.name : "Ninguno";
+
+            const topVol = productData.length > 0 ? [...productData].sort((a,b) => b.units - a.units)[0] : null;
+            document.getElementById('kpiTopVolume').innerText = topVol ? `${topVol.name} (${topVol.units} u.)` : "Ninguno";
+
+            renderTopSellers();
+            renderCharts();
+            renderTable();
+        }
+
+        /* RENDERIZADO DE MÁS VENDIDOS (TOP SELLERS) */
+        function renderTopSellers() {
+            const sortBy = document.getElementById('topSortFilter').value;
+            const sorted = [...productData].sort((a, b) => b[sortBy] - a[sortBy]);
+            const top3 = sorted.slice(0, 3);
+
+            // Generar tarjetas del podio
+            let podiumHTML = '';
+            top3.forEach((item, index) => {
+                let badgeColor = index === 0 ? 'text-amber-400 bg-amber-400/10 border-amber-500/40' : (index === 1 ? 'text-slate-300 bg-slate-700/50 border-slate-600' : 'text-amber-600 bg-amber-600/10 border-amber-700/40');
+                let medalIcon = index === 0 ? 'fa-medal text-amber-400' : (index === 1 ? 'fa-medal text-slate-300' : 'fa-medal text-amber-600');
+                
+                podiumHTML += `
+                    <div class="bg-slate-900/80 border border-slate-700 p-3 rounded-xl flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border ${badgeColor}">
+                                <i class="fa-solid ${medalIcon}"></i>
+                            </div>
+                            <div class="truncate">
+                                <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                                <p class="text-[10px] text-slate-400 truncate">${item.category}</p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="text-xs font-bold text-emerald-400 block">$${item.revenue.toLocaleString()}</span>
+                            <span class="text-[10px] text-slate-400 block">${item.units} unidades</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('topPodiumCards').innerHTML = podiumHTML || '<p class="text-xs text-slate-500 text-center">No hay datos</p>';
+
+            // Actualizar Gráfico de Barras Top Ventas
+            const top5 = sorted.slice(0, 5);
+            const labels = top5.map(i => i.name.length > 18 ? i.name.substring(0, 15) + '...' : i.name);
+            const dataValues = top5.map(i => sortBy === 'revenue' ? i.revenue : i.units);
+
+            if (topChart) {
+                topChart.data.labels = labels;
+                topChart.data.datasets[0].data = dataValues;
+                topChart.data.datasets[0].label = sortBy === 'revenue' ? 'Ingresos ($)' : 'Unidades Vendidas';
+                topChart.update();
+            }
+        }
+
+        // INICIALIZAR GRÁFICOS CHART.JS
+        function initCharts() {
+            // 1. Gráfico de Dispersión Matriz BCG
+            const ctxScatter = document.getElementById('bcgScatterChart').getContext('2d');
+            scatterChart = new Chart(ctxScatter, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Cuota de Mercado Relativa (X)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        },
+                        y: {
+                            title: { display: true, text: 'Tasa de Crecimiento % (Y)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const p = context.raw;
+                                    return `${p.name} | Rev: $${p.revenue} | Unidades: ${p.units} (${p.quadrant})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 2. Gráfico de Ingresos por Cuadrante (Pie/Doughnut)
+            const ctxPie = document.getElementById('bcgPieChart').getContext('2d');
+            pieChart = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Estrellas', 'Vacas Lecheras', 'Interrogantes', 'Perros'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#eab308', '#22c55e', '#3b82f6', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 3. Gráfico de Barras Top Ventas
+            const ctxTop = document.getElementById('topSellersChart').getContext('2d');
+            topChart = new Chart(ctxTop, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Ingresos ($)',
+                        data: [],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderCharts() {
+            const t = getThresholds();
+
+            // Preparar datasets de dispersión agrupados por cuadrante para colores precisos
+            const quadrantsMap = {
+                "Estrella": { color: '#eab308', data: [] },
+                "Vaca Lechera": { color: '#22c55e', data: [] },
+                "Interrogante": { color: '#3b82f6', data: [] },
+                "Perro": { color: '#ef4444', data: [] }
+            };
+
+            let revByQuad = { "Estrella": 0, "Vaca Lechera": 0, "Interrogante": 0, "Perro": 0 };
+
+            productData.forEach(p => {
+                quadrantsMap[p.quadrant].data.push({
+                    x: p.marketShare,
+                    y: p.growth,
+                    r: Math.max(6, Math.min(20, Math.sqrt(p.revenue) / 15)), // Tamaño de burbuja basado en ingresos
+                    name: p.name,
+                    revenue: p.revenue,
+                    units: p.units,
+                    quadrant: p.quadrant
+                });
+                revByQuad[p.quadrant] += p.revenue;
+            });
+
+            scatterChart.data.datasets = Object.keys(quadrantsMap).map(key => ({
+                label: key,
+                data: quadrantsMap[key].data,
+                backgroundColor: quadrantsMap[key].color
+            }));
+            scatterChart.update();
+
+            // Actualizar Pie Chart
+            pieChart.data.datasets[0].data = [
+                revByQuad["Estrella"],
+                revByQuad["Vaca Lechera"],
+                revByQuad["Interrogante"],
+                revByQuad["Perro"]
+            ];
+            pieChart.update();
+        }
+
+        // RENDERIZADO DE TABLA DE DATOS
+        function renderTable() {
+            const searchTerm = document.getElementById('tableSearch').value.toLowerCase();
+            const quadrantFilter = document.getElementById('quadrantFilter').value;
+            const tbody = document.getElementById('dataTableBody');
+            
+            const filtered = productData.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(searchTerm) || p.category.toLowerCase().includes(searchTerm);
+                const matchesQuad = quadrantFilter === 'ALL' || p.quadrant === quadrantFilter;
+                return matchesSearch && matchesQuad;
+            });
+
+            document.getElementById('tableCountBadge').innerText = `${filtered.length} ítems`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-500">No se encontraron productos registrados.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach((p, idx) => {
+                const originalIndex = productData.indexOf(p);
+                let badgeClass = '';
+                if (p.quadrant === 'Estrella') badgeClass = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+                else if (p.quadrant === 'Vaca Lechera') badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+                else if (p.quadrant === 'Interrogante') badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+                else badgeClass = 'bg-red-500/10 text-red-400 border-red-500/30';
+
+                html += `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="py-3 px-4 font-semibold text-white">${p.name}</td>
+                        <td class="py-3 px-4 text-slate-400">${p.category}</td>
+                        <td class="py-3 px-4 font-medium text-emerald-400">$${p.revenue.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-slate-300">${p.units.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-slate-300">${p.marketShare}</td>
+                        <td class="py-3 px-4 text-slate-300">${p.growth}%</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold border ${badgeClass}">
+                                ${p.quadrant}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="editProduct(${originalIndex})" class="text-blue-400 hover:text-blue-300 mr-2" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteProduct(${originalIndex})" class="text-red-400 hover:text-red-300" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // CARGA DE ARCHIVOS CSV
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSV(text, file.name);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(text, fileName) {
+            const lines = text.split('\n');
+            if (lines.length < 2) return;
+
+            let addedCount = 0;
+            // Parseo básico simulado para adaptarlo a las estructuras comunes de CSV
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cols = line.split(/,|\t/);
+                if (cols.length >= 2) {
+                    const name = cols[0].replace(/['"]+/g, '').trim();
+                    const revenue = parseFloat(cols[1]) || (Math.random() * 20000 + 5000);
+                    const units = Math.floor(Math.random() * 500) + 50;
+                    const marketShare = parseFloat((Math.random() * 3).toFixed(2));
+                    const growth = parseFloat((Math.random() * 30 - 5).toFixed(1));
+
+                    if (name) {
+                        productData.push({
+                            name: name,
+                            category: fileName,
+                            revenue: revenue,
+                            units: units,
+                            marketShare: marketShare,
+                            growth: growth
+                        });
+                        addedCount++;
+                    }
+                }
+            }
+
+            if (addedCount > 0) {
+                alert(`¡Se importaron ${addedCount} registros correctamente desde ${fileName}!`);
+                updateDashboard();
+            } else {
+                alert("No se pudieron extraer registros válidos del archivo CSV.");
+            }
+        }
+
+        function loadSampleData() {
+            productData = [
+                { name: "Acer Nitro V 16 AI", category: "Cat_Laptop.csv", revenue: 45000, units: 120, marketShare: 2.4, growth: 22.0 },
+                { name: "Ford F-150 Auto Parts", category: "Auto_Parts.csv", revenue: 28000, units: 450, marketShare: 1.8, growth: 14.5 },
+                { name: "Kenworth T800 Air Valve", category: "Heavy_Trucks.csv", revenue: 19500, units: 620, marketShare: 0.6, growth: 18.0 },
+                { name: "Swatch Irony AG 2001", category: "Accessories.csv", revenue: 8400, units: 310, marketShare: 0.4, growth: 4.2 },
+                { name: "Chocolate Tablet Industrial", category: "Food_Mfg.csv", revenue: 34000, units: 2400, marketShare: 1.9, growth: 5.5 },
+                { name: "Autodesk Fusion 360", category: "Software.csv", revenue: 12000, units: 85, marketShare: 0.5, growth: 8.0 }
+            ];
+            updateDashboard();
+        }
+
+        // CRUD MODAL
+        function openModal(isEdit = false) {
+            document.getElementById('productModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('productModal').classList.add('hidden');
+            document.getElementById('productForm').reset();
+            document.getElementById('editIndex').value = "-1";
+        }
+
+        function saveProduct(event) {
+            event.preventDefault();
+            const index = parseInt(document.getElementById('editIndex').value);
+            const newItem = {
+                name: document.getElementById('formName').value,
+                category: document.getElementById('formCategory').value,
+                revenue: parseFloat(document.getElementById('formRevenue').value),
+                units: parseFloat(document.getElementById('formUnits').value),
+                marketShare: parseFloat(document.getElementById('formMarketShare').value),
+                growth: parseFloat(document.getElementById('formGrowth').value)
+            };
+
+            if (index >= 0) {
+                productData[index] = newItem;
+            } else {
+                productData.push(newItem);
+            }
+
+            closeModal();
+            updateDashboard();
+        }
+
+        function editProduct(index) {
+            const p = productData[index];
+            document.getElementById('editIndex').value = index;
+            document.getElementById('formName').value = p.name;
+            document.getElementById('formCategory').value = p.category;
+            document.getElementById('formRevenue').value = p.revenue;
+            document.getElementById('formUnits').value = p.units;
+            document.getElementById('formMarketShare').value = p.marketShare;
+            document.getElementById('formGrowth').value = p.growth;
+            
+            document.getElementById('modalTitle').innerText = "Editar Registro";
+            openModal(true);
+        }
+
+        function deleteProduct(index) {
+            if (confirm("¿Estás seguro de eliminar este producto del análisis?")) {
+                productData.splice(index, 1);
+                updateDashboard();
+            }
+        }
+
+        // EXPORTAR A CSV
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Producto,Categoria,Ingresos,Unidades,CuotaRelativa,Crecimiento,CuadranteBCG\n";
+            productData.forEach(p => {
+                csvContent += `"${p.name}","${p.category}",${p.revenue},${p.units},${p.marketShare},${p.growth},"${p.quadrant}"\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "matriz_bcg_top_ventas.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
